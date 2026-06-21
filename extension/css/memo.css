@@ -1,0 +1,983 @@
+/* 기본 페이지 여백과 앱 전체 폰트. 실제 메모 본문 폰트는 아래 body[data-font]에서 다시 바뀐다. */
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: clamp(6px, 1vw, 12px) clamp(10px, 2vw, 24px) clamp(10px, 2vw, 24px);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 라이트 테마 색상 변수. 메모장 창/버튼/패널이 전부 이 변수들을 사용한다. */
+body.light {
+  background: #3d3d3d;
+  color: #222222;
+  --surface: #ffffff;
+  --surface-soft: #fafafa;
+  --chrome: #3b3b3b;
+  --border: rgba(49, 51, 56, 0.18);
+  --text: #222222;
+  --chrome-text: #eeeeee;
+  --muted: #666666;
+  --button-hover: rgba(255, 255, 255, 0.12);
+  --menu-hover: #eeeeef;
+  --menu-active: #e7e7e8;
+  --shadow: rgba(0, 0, 0, 0.16);
+  --subtle-scroll: #4f555d;
+  --icon-line: #444444;
+}
+
+/* 다크 테마 색상 변수. JS의 setTheme가 body class를 바꿔 적용한다. */
+body.dark {
+  background: #121212;
+  color: #f5f5f5;
+  --surface: #1b1b1b;
+  --surface-soft: #1f1f1f;
+  --chrome: #121212;
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #f5f5f5;
+  --chrome-text: #f5f5f5;
+  --muted: #bbbbbb;
+  --button-hover: rgba(255, 255, 255, 0.1);
+  --menu-hover: #2a2a2a;
+  --menu-active: #333333;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --subtle-scroll: #d0d0d0;
+  --icon-line: #d8d8d8;
+}
+
+/* 레이아웃 계산을 편하게 하기 위한 전역 box model 설정이다. */
+* {
+  box-sizing: border-box;
+}
+
+/* hidden 속성이 붙은 패널/메뉴는 화면에서 완전히 제거한다. */
+[hidden] {
+  display: none !important;
+}
+
+/* 브라우저별 스크롤바를 메모장 UI에 맞게 얇고 조용하게 맞춘다. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: var(--muted);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--subtle-scroll, var(--muted));
+}
+
+/* 버튼과 textarea가 body의 현재 폰트를 자연스럽게 물려받게 한다. */
+button,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* 앱의 가장 바깥 창. grid rows는 titlebar/menu/editor/statusbar 순서다. */
+.notepad-window {
+  width: 100%;
+  min-width: 280px;
+  height: calc(100vh - clamp(34px, 4vw, 48px));
+  height: calc(100dvh - clamp(34px, 4vw, 48px));
+  display: grid;
+  grid-template-rows: 36px 32px minmax(0, 1fr) 30px;
+  position: relative;
+  border-radius: 8px;
+  background: var(--chrome);
+  overflow: hidden;
+}
+
+/* Windows 메모장 느낌의 상단 titlebar 영역이다. */
+.titlebar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 0 16px;
+  color: var(--chrome-text);
+  background: var(--chrome);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* titlebar 왼쪽: 아이콘과 현재 문서 제목을 한 줄로 배치한다. */
+.title-left {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* titlebar 왼쪽의 앱 로고. 기능 버튼은 아니고 브랜드/창 아이콘 역할이다. */
+.window-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+/* 현재 파일 제목 버튼. 클릭하면 JS가 input으로 바꿔 이름을 수정하게 한다. */
+#document-title {
+  min-width: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--chrome-text);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#document-title:hover {
+  background: var(--button-hover);
+}
+
+/* 파일 제목 편집 input. 평소에는 hidden이고 제목 클릭 시 잠깐 나타난다. */
+.document-title-input {
+  width: min(320px, 48vw);
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  outline: 0;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  font-weight: 700;
+}
+
+/* 오른쪽 창 컨트롤 자리. 지금은 메모 비우기 x 버튼만 둔다. */
+.window-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.window-controls button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--chrome-text);
+  background: transparent;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.window-controls button:hover {
+  background: var(--button-hover);
+}
+
+/* titlebar 아래 메뉴바. Windows 앱의 File/Edit 메뉴 줄 같은 역할이다. */
+.memo-banner {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 4px;
+  padding: 0 8px;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.memo-banner button {
+  width: 28px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text);
+  background: transparent;
+  line-height: 1;
+}
+
+.memo-banner button svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+  fill: none;
+  stroke: var(--icon-line);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.memo-banner button:hover {
+  background: var(--menu-hover);
+}
+
+.memo-banner button.active {
+  background: var(--menu-active);
+}
+
+/* Settings 버튼을 눌렀을 때 titlebar 아래에 떠 있는 설정 팝업이다. */
+.settings-panel {
+  position: absolute;
+  top: 68px;
+  left: 116px;
+  z-index: 2;
+  width: min(360px, calc(100% - 24px));
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 28px var(--shadow);
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 4px;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.settings-row > span {
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.settings-actions {
+  display: flex;
+  min-width: 0;
+  gap: 3px;
+}
+
+.settings-actions button {
+  min-width: 0;
+  height: 28px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text);
+  background: transparent;
+  font-size: 0.86rem;
+}
+
+.settings-actions button:hover,
+.settings-actions button.active {
+  background: var(--menu-active);
+}
+
+.segmented-control {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-soft);
+}
+
+.segmented-control button {
+  width: 100%;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.download-picker {
+  position: relative;
+  display: flex;
+}
+
+.download-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  min-width: 82px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.download-menu button {
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  font-size: 0.84rem;
+}
+
+.download-menu button:hover {
+  background: var(--menu-active);
+}
+
+/* 폰트 선택 UI. 현재 폰트 버튼을 누르면 아래 font-list가 dropdown처럼 열린다. */
+.font-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.font-current {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 30px 0 10px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface-soft);
+  text-align: left;
+}
+
+.font-current::after {
+  content: "⌄";
+  position: absolute;
+  right: 10px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.font-current span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-current small {
+  display: none;
+}
+
+.font-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 3;
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: 0;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: 0 8px 16px var(--shadow);
+}
+
+.font-list button {
+  height: auto;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 7px;
+  align-content: center;
+  justify-items: start;
+  padding: 4px 7px;
+  text-align: left;
+}
+
+.font-list button::before {
+  content: "";
+  grid-row: 1 / span 2;
+  width: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.font-list button.active::before {
+  content: "✓";
+}
+
+.font-list button span,
+.font-list button small {
+  grid-column: 2;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-list button small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+/* 실제 메모장 영역. 파일 패널이 열리면 왼쪽에 붙고 닫히면 textarea가 전체 폭을 쓴다. */
+.memo-workspace {
+  min-width: 0;
+  min-height: 0;
+  width: calc(100% - 8px);
+  height: 100%;
+  margin: 0 4px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  background: var(--surface);
+}
+
+/* 파일 패널을 숨겼을 때 textarea가 grid 전체 칸을 차지하게 만든다. */
+.file-panel[hidden] + #memo-body {
+  grid-column: 1 / -1;
+}
+
+/* 왼쪽 파일/폴더 트리 패널이다. */
+.file-panel {
+  width: 240px;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+/* 파일 패널 상단: Files 제목과 압축된 파일/폴더 액션이 들어간다. */
+.file-panel-header {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.file-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* tree-item은 폴더와 파일 행이 공유하는 기본 버튼 스타일이다. */
+.file-panel-header button,
+.tree-item {
+  border: 0;
+  border-radius: 3px;
+  color: var(--text);
+  background: transparent;
+}
+
+.file-panel-header button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.file-panel-header button svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+  fill: none;
+  stroke: var(--icon-line);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.file-panel-header button:hover,
+.tree-item:hover,
+.tree-item.active {
+  background: var(--menu-active);
+}
+
+/* 드래그 중/드롭 가능 상태를 시각적으로 보여준다. */
+.tree-item.dragging {
+  opacity: 0.55;
+}
+
+.tree-folder.drop-target {
+  background: var(--menu-hover);
+  outline: 1px solid var(--muted);
+}
+
+/* 파일/폴더 목록 스크롤 영역이다. */
+.file-tree {
+  height: calc(100% - 34px);
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.tree-group {
+  margin-bottom: 4px;
+}
+
+/* 폴더/파일 한 줄. --depth 값으로 들여쓰기 깊이를 조절한다. */
+.tree-item {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px 5px calc(5px + var(--depth, 0) * 16px);
+  position: relative;
+  text-align: left;
+  font-size: 0.86rem;
+}
+
+.tree-item span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 폴더 접기/펼치기 화살표 자리다. 빈 폴더도 토글이 보이게 JS에서 항상 만든다. */
+.tree-toggle {
+  width: 24px;
+  min-height: 24px;
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+/* 파일 행은 아이콘이 없으므로 폴더 토글 자리만큼 spacer를 둬서 정렬을 맞춘다. */
+.tree-spacer {
+  width: 24px;
+  flex: 0 0 24px;
+}
+
+/* 폴더 아이콘 SVG가 들어가는 고정 폭 자리다. */
+.tree-icon {
+  width: 18px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 파일/폴더 선형 아이콘. stroke 색은 테마 변수로 바뀐다. */
+.tree-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: var(--icon-line);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.file-icon svg {
+  opacity: 0.92;
+}
+
+.tree-folder {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tree-file {
+  color: var(--text);
+}
+
+/* 파일/폴더 rename 모드에서 tree-item 대신 들어가는 input이다. */
+.tree-input {
+  width: calc(100% - 14px);
+  min-height: 28px;
+  margin: 2px 7px 2px 0;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  outline: 0;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.tree-input:focus {
+  border-color: var(--muted);
+}
+
+/* 우클릭했을 때 뜨는 Rename/Delete 메뉴다. 위치는 JS에서 마우스 좌표로 잡는다. */
+.context-menu {
+  position: absolute;
+  z-index: 5;
+  min-width: 128px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 8px 18px var(--shadow);
+}
+
+.context-menu button {
+  width: 100%;
+  height: 28px;
+  display: block;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  font-size: 0.86rem;
+}
+
+.context-menu button:hover {
+  background: var(--menu-active);
+}
+
+/* 실제 글을 쓰는 메모장 textarea. pre-wrap으로 Windows 메모장처럼 자동 줄바꿈한다. */
+#memo-body {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  display: block;
+  padding: 16px 12px;
+  border: 0;
+  border-radius: 0px 0px 0 0;
+  outline: 0;
+  resize: none;
+  color: var(--text);
+  background: var(--surface);
+  font-family: "SUIT", -apple-system, sans-serif;
+  font-size: 1.18rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* body[data-font] 값에 따라 textarea의 실제 글꼴을 바꾼다. */
+body[data-font="system"] #memo-body {
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+}
+
+body[data-font="suit"] #memo-body {
+  font-family: "SUIT", -apple-system, sans-serif;
+}
+
+body[data-font="dotum"] #memo-body {
+  font-family: Dotum, "돋움", sans-serif;
+}
+
+body[data-font="gulim"] #memo-body {
+  font-family: Gulim, "굴림", sans-serif;
+}
+
+body[data-font="batang"] #memo-body {
+  font-family: Batang, "바탕", serif;
+}
+
+body[data-font="apple-gothic"] #memo-body {
+  font-family: "Apple SD Gothic Neo", "Apple Gothic", -apple-system, sans-serif;
+}
+
+body[data-font="malgun"] #memo-body {
+  font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+}
+
+body[data-font="noto-kr"] #memo-body {
+  font-family: "Noto Sans KR", "Noto Sans CJK KR", sans-serif;
+}
+
+body[data-font="nanum"] #memo-body {
+  font-family: "Nanum Gothic", "나눔고딕", sans-serif;
+}
+
+body[data-font="spoqa"] #memo-body {
+  font-family: "Spoqa Han Sans Neo", "Spoqa Han Sans", sans-serif;
+}
+
+body[data-font="pretendard"] #memo-body {
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+body[data-font="gothic-a1"] #memo-body {
+  font-family: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+body[data-font="serif-kr"] #memo-body {
+  font-family: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", serif;
+}
+
+body[data-font="mono"] #memo-body {
+  font-family: Consolas, "Courier New", monospace;
+}
+
+body[data-font="ui-mono"] #memo-body {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+body[data-font="georgia"] #memo-body {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+body[data-font="arial"] #memo-body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body[data-font="verdana"] #memo-body {
+  font-family: Verdana, Geneva, sans-serif;
+}
+
+/* 폰트 드롭다운 안의 각 옵션 미리보기에도 실제 폰트 느낌을 보여준다. */
+.font-system {
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+}
+
+.font-suit {
+  font-family: "SUIT", -apple-system, sans-serif;
+}
+
+.font-dotum {
+  font-family: Dotum, "돋움", sans-serif;
+}
+
+.font-gulim {
+  font-family: Gulim, "굴림", sans-serif;
+}
+
+.font-batang {
+  font-family: Batang, "바탕", serif;
+}
+
+.font-apple-gothic {
+  font-family: "Apple SD Gothic Neo", "Apple Gothic", -apple-system, sans-serif;
+}
+
+.font-malgun {
+  font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+}
+
+.font-noto-kr {
+  font-family: "Noto Sans KR", "Noto Sans CJK KR", sans-serif;
+}
+
+.font-nanum {
+  font-family: "Nanum Gothic", "나눔고딕", sans-serif;
+}
+
+.font-spoqa {
+  font-family: "Spoqa Han Sans Neo", "Spoqa Han Sans", sans-serif;
+}
+
+.font-pretendard {
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+.font-gothic-a1 {
+  font-family: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+.font-serif-kr {
+  font-family: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", serif;
+}
+
+.font-mono {
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.font-ui-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.font-georgia {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.font-arial {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.font-verdana {
+  font-family: Verdana, Geneva, sans-serif;
+}
+
+/* 하단 상태바. Drive 상태는 숨기고 오른쪽 통계만 보여준다. */
+.statusbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 0 4px 4px;
+  padding: 0 12px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+/* 상태바 텍스트가 좁은 화면에서 삐져나오지 않게 줄임표 처리한다. */
+.statusbar span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#drive-status {
+  display: none;
+}
+
+#drive-status.is-action {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+#memo-stats {
+  flex: 0 1 auto;
+  margin-left: auto;
+  text-align: right;
+}
+
+.creditbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  padding: 0 8px;
+  color: color-mix(in srgb, var(--muted) 72%, transparent);
+  background: transparent;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.creditbar span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 작은 창/화면 분할 환경에서 여백, 파일 패널 폭, 글자 크기를 줄인다. */
+@media (max-width: 620px) {
+  body {
+    padding: 4px 8px 8px;
+  }
+
+  .notepad-window {
+    height: calc(100vh - 26px);
+    height: calc(100dvh - 26px);
+  }
+
+  .titlebar {
+    gap: 8px;
+    padding: 0 8px 0 10px;
+    font-size: 0.92rem;
+  }
+
+  .title-left {
+    gap: 8px;
+  }
+
+  #memo-body {
+    width: 100%;
+    margin: 0;
+    padding: 12px 10px;
+    border-radius: 7px 7px 0 0;
+    font-size: 1.05rem;
+  }
+
+  .memo-workspace {
+    width: calc(100% - 6px);
+    margin: 0 3px;
+  }
+
+  .file-panel {
+    width: min(220px, 54vw);
+  }
+
+  .memo-banner button {
+    height: 24px;
+    padding: 0 7px;
+    font-size: 0.8rem;
+  }
+
+  .settings-panel {
+    top: 66px;
+    left: 11px;
+    width: calc(100% - 22px);
+  }
+
+  .settings-row {
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .font-list {
+    grid-template-columns: 1fr;
+    max-height: 180px;
+  }
+
+  .statusbar {
+    margin: 0 3px 3px;
+    padding: 0 10px;
+    border-radius: 0 0 7px 7px;
+    font-size: 0.88rem;
+  }
+
+  .creditbar {
+    padding: 0 8px;
+  }
+}
+
+/* 아주 좁은 화면에서는 titlebar 공간 확보를 위해 아이콘을 숨긴다. */
+@media (max-width: 360px) {
+  .window-icon {
+    display: none;
+  }
+
+  .titlebar {
+    font-size: 0.86rem;
+  }
+
+  .window-controls button {
+    width: 24px;
+  }
+}

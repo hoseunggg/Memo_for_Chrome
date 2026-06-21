@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memo</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
+  <link rel="apple-touch-icon" href="icons/icon-128.png" />
+  <link rel="stylesheet" href="css/memo.css" />
+</head>
+<body class="light">
+  <!-- 전체 앱 창: Windows 메모장처럼 titlebar, menu bar, editor, statusbar로 나눈다. -->
+  <main class="notepad-window" aria-label="Web memo notepad">
+    <!-- titlebar: 아이콘, 현재 파일명, 파일명 직접 편집 input, 초기화 버튼 영역이다. -->
+    <header class="titlebar">
+      <div class="title-left">
+        <img class="window-icon" src="logo.png" alt="" aria-hidden="true" />
+        <button id="document-title" type="button">Memo for Chrome</button>
+        <input id="document-title-input" class="document-title-input" type="text" hidden />
+      </div>
+
+      <div class="window-controls">
+        <button id="clear-memo" type="button" aria-label="Clear memo" title="Clear memo">×</button>
+      </div>
+    </header>
+
+    <!-- 상단 메뉴바: 파일 다운로드, 새 파일, 파일 트리, 설정을 연다. Drive 동기화는 앱 시작 후 자동 실행된다. -->
+    <nav class="memo-banner" aria-label="Memo actions">
+      <button id="save-file" type="button" aria-label="Save" title="Save">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M5 4.5h12.25L19.5 6.75V19.5h-15v-15Z"/>
+          <path d="M8 4.5v5h7v-5"/>
+          <path d="M8 15.5h8"/>
+        </svg>
+      </button>
+      <div class="download-picker">
+        <button id="download-file" type="button" aria-label="Download" title="Download" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 4.5v10"/>
+            <path d="M8 11.25 12 15.25 16 11.25"/>
+            <path d="M5.5 19.5h13"/>
+          </svg>
+        </button>
+        <div id="download-menu" class="download-menu" hidden>
+          <button type="button" data-format="txt">TXT</button>
+          <button type="button" data-format="md">MD</button>
+        </div>
+      </div>
+      <button id="new-file" type="button" aria-label="New file" title="New file">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M6.5 3.75h7l4 4v12.5h-11a1 1 0 0 1-1-1V4.75a1 1 0 0 1 1-1Z"/>
+          <path d="M13.5 3.95v4h3.8"/>
+          <path d="M8.75 13.5h5.5"/>
+          <path d="M11.5 10.75v5.5"/>
+        </svg>
+      </button>
+      <button id="file-list" type="button" aria-label="Files" title="Files">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M3.5 6.75h6.15l1.85 2.15h9v8.35a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V6.75Z"/>
+          <path d="M3.5 9h17"/>
+        </svg>
+      </button>
+      <button id="settings" type="button" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 8.25a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Z"/>
+          <path d="M4.75 13.25v-2.5l2.1-.45c.18-.55.4-1.08.68-1.56L6.35 6.95l1.77-1.77 1.8 1.18c.5-.27 1.02-.5 1.58-.65L11.95 3.5h2.5l.45 2.2c.56.16 1.08.38 1.58.66l1.8-1.18 1.77 1.77-1.18 1.79c.28.48.5 1.01.68 1.56l2.1.45v2.5l-2.1.45c-.18.55-.4 1.08-.68 1.56l1.18 1.79-1.77 1.77-1.8-1.18c-.5.28-1.02.5-1.58.66l-.45 2.2h-2.5l-.45-2.2a7.1 7.1 0 0 1-1.58-.66l-1.8 1.18-1.77-1.77 1.18-1.79a7.2 7.2 0 0 1-.68-1.56l-2.1-.45Z"/>
+        </svg>
+      </button>
+    </nav>
+
+    <!-- 설정 패널: Settings 버튼을 눌렀을 때만 열리는 테마/폰트 선택 UI다. -->
+    <section id="settings-panel" class="settings-panel" aria-label="Settings panel" hidden>
+      <div class="settings-row">
+        <span id="theme-label">Theme</span>
+        <div class="settings-actions segmented-control">
+          <button id="setting-light" type="button">Light</button>
+          <button id="setting-dark" type="button">Dark</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span id="language-label">Language</span>
+        <div class="settings-actions segmented-control">
+          <button id="setting-english" type="button">English</button>
+          <button id="setting-korean" type="button">한국어</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span id="font-label">Font</span>
+        <div class="font-picker">
+          <button id="font-current" class="font-current" type="button" aria-expanded="false">
+            <span>System</span>
+            <small>가나다 ABC 123</small>
+          </button>
+          <div id="font-list" class="settings-actions font-list" hidden>
+            <!-- 각 버튼의 data-font 값이 body[data-font]로 들어가고, CSS가 실제 폰트를 바꾼다. -->
+            <button class="font-option font-system" type="button" data-font="system"><span>System</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-dotum" type="button" data-font="dotum"><span>Dotum</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-gulim" type="button" data-font="gulim"><span>Gulim</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-batang" type="button" data-font="batang"><span>Batang</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-suit" type="button" data-font="suit"><span>SUIT</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-apple-gothic" type="button" data-font="apple-gothic"><span>Apple Gothic</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-malgun" type="button" data-font="malgun"><span>Malgun Gothic</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-noto-kr" type="button" data-font="noto-kr"><span>Noto Sans KR</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-nanum" type="button" data-font="nanum"><span>Nanum Gothic</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-spoqa" type="button" data-font="spoqa"><span>Spoqa Han Sans</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-pretendard" type="button" data-font="pretendard"><span>Pretendard</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-gothic-a1" type="button" data-font="gothic-a1"><span>Gothic A1</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-serif-kr" type="button" data-font="serif-kr"><span>Korean Serif</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-mono" type="button" data-font="mono"><span>Mono</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-ui-mono" type="button" data-font="ui-mono"><span>UI Mono</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-georgia" type="button" data-font="georgia"><span>Georgia</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-arial" type="button" data-font="arial"><span>Arial</span><small>가나다 ABC 123</small></button>
+            <button class="font-option font-verdana" type="button" data-font="verdana"><span>Verdana</span><small>가나다 ABC 123</small></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 작업 영역: 왼쪽 파일 트리는 숨길 수 있고, 오른쪽 textarea가 실제 메모장 본문이다. -->
+    <section class="memo-workspace" aria-label="Memo workspace">
+      <aside id="file-panel" class="file-panel" aria-label="Files and folders" hidden>
+        <div class="file-panel-header">
+          <span>Files</span>
+          <div class="file-panel-actions">
+            <button id="tree-new-file" type="button" aria-label="New file" title="New file">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M6.5 3.75h7l4 4v12.5h-11a1 1 0 0 1-1-1V4.75a1 1 0 0 1 1-1Z"/>
+                <path d="M13.5 3.95v4h3.8"/>
+                <path d="M8.75 13.5h5.5"/>
+                <path d="M11.5 10.75v5.5"/>
+              </svg>
+            </button>
+            <button id="new-folder" type="button" aria-label="New folder" title="New folder">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M3.5 7h6l1.8 2h9.2v8.75a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7Z"/>
+                <path d="M3.5 9h17"/>
+                <path d="M12 12.25v5"/>
+                <path d="M9.5 14.75h5"/>
+              </svg>
+            </button>
+            <button id="delete-item" type="button" aria-label="Delete" title="Delete">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M5.5 7.25h13"/>
+                <path d="M9 7.25V5.5h6v1.75"/>
+                <path d="M7.25 9.25l.65 10.25a1.5 1.5 0 0 0 1.5 1.4h5.2a1.5 1.5 0 0 0 1.5-1.4l.65-10.25"/>
+                <path d="M10.25 11.75v6"/>
+                <path d="M13.75 11.75v6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="file-tree" class="file-tree"></div>
+      </aside>
+
+      <textarea id="memo-body" spellcheck="false" autofocus></textarea>
+    </section>
+
+    <!-- 파일/폴더 우클릭 메뉴: JS에서 위치와 대상 파일/폴더를 동적으로 제어한다. -->
+    <div id="context-menu" class="context-menu" hidden>
+      <button id="context-rename" type="button">Rename</button>
+      <button id="context-delete" type="button">Delete</button>
+    </div>
+
+    <!-- 하단 상태바: Drive 상태와 글자/단어 수를 보여준다. -->
+    <footer class="statusbar">
+      <span id="drive-status"></span>
+      <span id="memo-stats">0 words · 0 chars</span>
+    </footer>
+  </main>
+  <div class="creditbar">
+    <span id="file-path">Built by Hoseung</span>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
