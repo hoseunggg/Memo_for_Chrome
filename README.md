@@ -90,6 +90,3 @@ Memo_for_Chrome/
 | `https://www.googleapis.com/*` | Drive API calls |
 | `https://www.googleapis.com/auth/drive` | Read and sync files inside the Drive `Memo` folder |
 
-## License
-
-MIT

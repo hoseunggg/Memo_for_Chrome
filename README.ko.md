@@ -89,7 +89,3 @@ Memo_for_Chrome/
 | `storage` | 예약 (데이터는 현재 localStorage 사용) |
 | `https://www.googleapis.com/*` | Drive API 호출 |
 | `https://www.googleapis.com/auth/drive` | Drive의 `Memo` 폴더 안 파일 읽기 및 동기화 |
-
-## 라이선스
-
-MIT
